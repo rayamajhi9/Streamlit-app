@@ -23,7 +23,14 @@ def _get_allowed_emails() -> frozenset[str]:
 
 def require_authorization() -> str:
     """Require Google login and an approved email before continuing."""
-    if not st.user.is_logged_in:
+    if "is_logged_in" not in st.user:
+        st.error(
+            "Authentication is not configured. Add an [auth] section to "
+            ".streamlit/secrets.toml before starting the app."
+        )
+        st.stop()
+
+    if not st.user["is_logged_in"]:
         st.title("Sign in required")
         st.write("Sign in with an authorized Google account to continue.")
         if st.button("Sign in with Google", type="primary"):
