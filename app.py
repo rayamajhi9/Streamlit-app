@@ -9,7 +9,6 @@ expense_view = st.Page(
     page="views/expenses_view.py",
     title="Expense Tracker", 
     icon=":material/account_circle:",
-    layout="wide",
 )
 
 project_1_page = st.Page(
