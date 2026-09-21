@@ -5,8 +5,8 @@ from auth import require_authorization
 require_authorization()
 
 # -- PAGE SETUP ---
-expense_view = st.Page(
-    page="views/expenses_view.py",
+expenses_view = st.Page(
+    page="views/expenses_views.py",
     title="Expense Tracker", 
     icon=":material/account_circle:",
 )
@@ -23,14 +23,11 @@ project_2_page = st.Page(
     icon=":material/smart_toy:",
 )
 
-pg = st.navigation(
-    pages=[expense_view, project_1_page, project_2_page],
-    default=expense_view,
-    title="Expense Tracker",
-    icon=":material/account_circle:",
-    
-)
+#pg = st.navigation(
+#    pages=[expenses_view, project_1_page, project_2_page]
+#)
 
+# --- Navigation Setup [With sections] ---
 pg.run()
 
 # data = conn.read(
