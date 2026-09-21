@@ -23,9 +23,9 @@ project_2_page = st.Page(
     icon=":material/smart_toy:",
 )
 
-#pg = st.navigation(
-#    pages=[expenses_view, project_1_page, project_2_page]
-#)
+pg = st.navigation(
+    pages=[expenses_view, project_1_page, project_2_page]
+)
 
 # --- Navigation Setup [With sections] ---
 pg.run()
