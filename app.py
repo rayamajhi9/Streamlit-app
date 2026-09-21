@@ -6,7 +6,7 @@ require_authorization()
 
 # -- PAGE SETUP ---
 expense_view = st.Page(
-    page="views/expense_view.py",
+    page="views/expenses_view.py",
     title="Expense Tracker", 
     icon=":material/account_circle:",
     layout="wide",
