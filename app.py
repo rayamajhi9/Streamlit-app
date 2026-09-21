@@ -29,7 +29,7 @@ pg = st.navigation(
     default=expense_view,
     title="Expense Tracker",
     icon=":material/account_circle:",
-    layout="wide",
+    
 )
 
 pg.run()
