@@ -129,37 +129,112 @@ st.caption("Log farm expenses with priority and budget tracking.", text_alignmen
 
 with st.form("add_expense", clear_on_submit=True, border=True):
     values: dict[str, object] = {}
-    form_columns = ordered_columns()
-    for start in range(0, len(form_columns), 3):
-        row_columns = st.columns(min(3, len(form_columns) - start))
-        for position, column in enumerate(form_columns[start : start + 3]):
+    field_position = [0]
+
+    def render_row(row: list[str]) -> None:
+        row_columns = st.columns(len(row))
+        for position, column in enumerate(row):
             with row_columns[position]:
-                if is_column(column, "Total Cost"):
-                    quantity_column = next(
-                        (name for name in COLUMNS if is_column(name, "Qty", "Quantity")),
-                        None,
-                    )
-                    unit_cost_column = next(
-                        (name for name in COLUMNS if is_column(name, "Unit Cost")),
-                        None,
-                    )
-                    calculated_total = (
-                        float(values.get(quantity_column) or 0)
-                        * float(values.get(unit_cost_column) or 0)
-                        if quantity_column and unit_cost_column
-                        else 0.0
-                    )
-                    values[column] = st.number_input(
-                        column,
-                        value=calculated_total,
-                        min_value=0.0,
-                        step=0.01,
-                        format="%.2f",
-                        key=f"expense_total_{normalized(column)}",
-                        help="Calculated from quantity and unit cost; you can adjust it if needed.",
-                    )
-                else:
-                    values[column] = render_field(column, start + position)
+                values[column] = render_field(column, field_position[0])
+                field_position[0] += 1
+
+    def render_total() -> None:
+        total_column = next(
+            (column for column in COLUMNS if is_column(column, "Total Cost")),
+            None,
+        )
+        if not total_column:
+            return
+        quantity_column = next(
+            (name for name in COLUMNS if is_column(name, "Qty", "Quantity")),
+            None,
+        )
+        unit_cost_column = next(
+            (name for name in COLUMNS if is_column(name, "Unit Cost")),
+            None,
+        )
+        calculated_total = (
+            float(values.get(quantity_column) or 0)
+            * float(values.get(unit_cost_column) or 0)
+            if quantity_column and unit_cost_column
+            else 0.0
+        )
+        values[total_column] = st.number_input(
+            total_column,
+            value=calculated_total,
+            min_value=0.0,
+            step=0.01,
+            format="%.2f",
+            key="expense_total",
+            help="Calculated from quantity and unit cost.",
+        )
+        field_position[0] += 1
+
+    visible_columns = [
+        column for column in ordered_columns() if not is_column(column, "Expense ID")
+    ]
+
+    identity_row = [
+        column
+        for column in ("Date", "Category", "Subcategory")
+        if column in COLUMNS
+    ]
+    if identity_row:
+        st.subheader("Expense details")
+        render_row(identity_row)
+
+    description_row = [
+        column
+        for column in ("Enterprise", "Description", "Supplier")
+        if column in COLUMNS
+    ]
+    if description_row:
+        render_row(description_row)
+
+    cost_columns = [
+        column
+        for column in ("Qty", "Quantity", "Unit", "Unit Cost")
+        if column in COLUMNS
+    ]
+    if cost_columns:
+        st.subheader("Cost details")
+        render_row(cost_columns)
+        render_total()
+
+    payment_row = [
+        column
+        for column in ("Payment Method", "Paid By", "Receipt")
+        if column in COLUMNS
+    ]
+    if payment_row:
+        st.subheader("Payment details")
+        render_row(payment_row)
+
+    controls_row = [
+        column
+        for column in ("Recurring", "Priority", "Budgeted", "Tax")
+        if column in COLUMNS
+    ]
+    if controls_row:
+        st.subheader("Tracking")
+        render_row(controls_row)
+
+    notes_columns = [
+        column for column in COLUMNS if is_column(column, "Notes") and column not in values
+    ]
+    if notes_columns:
+        render_row(notes_columns)
+
+    rendered_columns = set(values)
+    extra_columns = [
+        column
+        for column in visible_columns
+        if column not in rendered_columns and not is_column(column, "Total Cost")
+    ]
+    if extra_columns:
+        with st.expander("Additional fields", expanded=False):
+            for start in range(0, len(extra_columns), 3):
+                render_row(extra_columns[start : start + 3])
 
     submitted = st.form_submit_button("Save expense", type="primary", icon=":material/save:")
     clear_form = st.form_submit_button("Clear form", icon=":material/ink_eraser:")
@@ -186,6 +261,12 @@ elif submitted:
             st.error(error)
     else:
         row = {column: prepare_value(column, values.get(column, "")) for column in COLUMNS}
+        id_column = next(
+            (column for column in COLUMNS if is_column(column, "Expense ID", "ID")),
+            None,
+        )
+        if id_column:
+            row[id_column] = next_expense_id()
         total_column = next(
             (column for column in COLUMNS if is_column(column, "Total Cost")),
             None,
