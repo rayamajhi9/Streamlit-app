@@ -33,8 +33,22 @@ def next_expense_id() -> str:
 
 st.title("Expense register")
 
-with st.container(border=True):
-    st.subheader("Add an expense")
+last_submission = st.session_state.pop("last_expense_submission", None)
+if last_submission:
+    st.success(
+        f"Expense {last_submission['Expense ID']} was submitted successfully."
+    )
+    with st.expander("View submitted expense", expanded=True):
+        st.dataframe(
+            pd.DataFrame([last_submission]),
+            width="stretch",
+            hide_index=True,
+        )
+
+st.subheader("Current expenses")
+st.dataframe(data, width="stretch", hide_index=True)
+
+with st.expander("Add an expense", expanded=False):
     with st.form("add_expense", clear_on_submit=True):
         expense_date = st.date_input("Date", value=date.today())
         category = st.selectbox(
@@ -81,10 +95,11 @@ with st.container(border=True):
         elif unit_cost <= 0:
             st.error("Unit cost must be greater than zero.")
         else:
+            expense_id = next_expense_id()
             new_row = pd.DataFrame(
                 [
                     {
-                        "Expense ID": next_expense_id(),
+                        "Expense ID": expense_id,
                         "Date": expense_date.isoformat(),
                         "Category": category,
                         "Subcategory": subcategory.strip(),
@@ -111,8 +126,15 @@ with st.container(border=True):
                 worksheet=WORKSHEET,
                 data=pd.concat([data, new_row], ignore_index=True),
             )
-            st.success(f"Added {description.strip()} to the expense register.")
+            st.session_state["last_expense_submission"] = {
+                "Expense ID": expense_id,
+                "Date": expense_date.isoformat(),
+                "Category": category,
+                "Description": description.strip(),
+                "Qty": quantity,
+                "Unit Cost": unit_cost,
+                "Total Cost": total_cost,
+                "Paid By": paid_by,
+                "Notes": notes.strip(),
+            }
             st.rerun()
-
-#st.subheader("Current expenses")
-#st.dataframe(data, width="stretch", hide_index=True)
