@@ -236,9 +236,27 @@ with st.form("add_expense", clear_on_submit=True, border=True):
             for start in range(0, len(extra_columns), 3):
                 render_row(extra_columns[start : start + 3])
 
-    submitted = st.form_submit_button("Save expense", type="primary", icon=":material/save:")
-    clear_form = st.form_submit_button("Clear form", icon=":material/ink_eraser:")
-    cancelled = st.form_submit_button("Cancel", icon=":material/close:")
+    st.space("small")
+    action_columns = st.columns([2, 1, 1], gap="medium")
+    with action_columns[0]:
+        submitted = st.form_submit_button(
+            "Save expense",
+            type="primary",
+            icon=":material/save:",
+            width="stretch",
+        )
+    with action_columns[1]:
+        clear_form = st.form_submit_button(
+            "Clear form",
+            icon=":material/ink_eraser:",
+            width="stretch",
+        )
+    with action_columns[2]:
+        cancelled = st.form_submit_button(
+            "Cancel",
+            icon=":material/close:",
+            width="stretch",
+        )
 
 if cancelled:
     st.info("Expense entry cancelled.")
