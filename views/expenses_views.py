@@ -42,6 +42,39 @@ def is_column(column: str, *names: str) -> bool:
     return normalized(column) in {normalized(name) for name in names}
 
 
+def ordered_columns() -> list[str]:
+    groups = [
+        ("Expense ID", "ID"),
+        ("Date",),
+        ("Category",),
+        ("Subcategory",),
+        ("Enterprise",),
+        ("Description",),
+        ("Supplier",),
+        ("Qty", "Quantity"),
+        ("Unit",),
+        ("Unit Cost",),
+        ("Total Cost",),
+        ("Payment Method",),
+        ("Paid By",),
+        ("Receipt",),
+        ("Recurring",),
+        ("Priority",),
+        ("Budgeted",),
+        ("Tax",),
+        ("Notes",),
+    ]
+    ordered = []
+    for group in groups:
+        ordered.extend(
+            column
+            for column in COLUMNS
+            if column not in ordered and is_column(column, *group)
+        )
+    ordered.extend(column for column in COLUMNS if column not in ordered)
+    return ordered
+
+
 def render_field(column: str, position: int) -> object:
     key = f"expense_{position}_{normalized(column).replace(' ', '_')}"
     name = normalized(column)
@@ -68,8 +101,6 @@ def render_field(column: str, position: int) -> object:
             key=key,
         )
         return receipt.name if receipt else ""
-    if is_column(column, "Total Cost"):
-        return None
     if is_column(column, "Tax") or name in {"qty", "quantity", "unit cost"}:
         return st.number_input(column, min_value=0.0, step=0.01, format="%.2f", key=key)
 
@@ -98,14 +129,37 @@ st.caption("Log farm expenses with priority and budget tracking.", text_alignmen
 
 with st.form("add_expense", clear_on_submit=True, border=True):
     values: dict[str, object] = {}
-    columns = st.columns(3)
-    for position, column in enumerate(COLUMNS):
-        with columns[position % 3]:
-            if is_column(column, "Total Cost") and "Qty" in values and "Unit Cost" in values:
-                values[column] = float(values["Qty"]) * float(values["Unit Cost"])
-                st.number_input(column, value=values[column], disabled=True, format="%.2f")
-            else:
-                values[column] = render_field(column, position)
+    form_columns = ordered_columns()
+    for start in range(0, len(form_columns), 3):
+        row_columns = st.columns(min(3, len(form_columns) - start))
+        for position, column in enumerate(form_columns[start : start + 3]):
+            with row_columns[position]:
+                if is_column(column, "Total Cost"):
+                    quantity_column = next(
+                        (name for name in COLUMNS if is_column(name, "Qty", "Quantity")),
+                        None,
+                    )
+                    unit_cost_column = next(
+                        (name for name in COLUMNS if is_column(name, "Unit Cost")),
+                        None,
+                    )
+                    calculated_total = (
+                        float(values.get(quantity_column) or 0)
+                        * float(values.get(unit_cost_column) or 0)
+                        if quantity_column and unit_cost_column
+                        else 0.0
+                    )
+                    values[column] = st.number_input(
+                        column,
+                        value=calculated_total,
+                        min_value=0.0,
+                        step=0.01,
+                        format="%.2f",
+                        key=f"expense_total_{normalized(column)}",
+                        help="Calculated from quantity and unit cost; you can adjust it if needed.",
+                    )
+                else:
+                    values[column] = render_field(column, start + position)
 
     submitted = st.form_submit_button("Save expense", type="primary", icon=":material/save:")
     clear_form = st.form_submit_button("Clear form", icon=":material/ink_eraser:")
@@ -132,6 +186,12 @@ elif submitted:
             st.error(error)
     else:
         row = {column: prepare_value(column, values.get(column, "")) for column in COLUMNS}
+        total_column = next(
+            (column for column in COLUMNS if is_column(column, "Total Cost")),
+            None,
+        )
+        if total_column and quantity_column and unit_cost_column:
+            row[total_column] = float(values[quantity_column]) * float(values[unit_cost_column])
         conn.update(
             worksheet=WORKSHEET,
             data=pd.concat([data, pd.DataFrame([row], columns=COLUMNS)], ignore_index=True),
