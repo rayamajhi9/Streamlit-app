@@ -7,6 +7,6 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 st.title("Expenses Dashboard")
 
 data = conn.read(
-    worksheet="Expenses tracker"
+    worksheet="Expense Register"
 )
 st.dataframe(data)
