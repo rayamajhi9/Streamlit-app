@@ -8,7 +8,7 @@ from streamlit_gsheets import GSheetsConnection
 
 WORKSHEET = "Expense Register"
 conn = st.connection("gsheets", type=GSheetsConnection)
-data = conn.read(worksheet=WORKSHEET)
+#data = conn.read(worksheet=WORKSHEET)
 
 
 def options_for(column: str, fallback: list[str]) -> list[str]:
@@ -114,5 +114,5 @@ with st.container(border=True):
             st.success(f"Added {description.strip()} to the expense register.")
             st.rerun()
 
-st.subheader("Current expenses")
-st.dataframe(data, width="stretch", hide_index=True)
+#st.subheader("Current expenses")
+#st.dataframe(data, width="stretch", hide_index=True)
