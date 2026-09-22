@@ -25,7 +25,7 @@ project_2_page = st.Page(
 
 pg = st.navigation(
     {
-            "Expenses Tracker": [expenses_view, project_1_page], 
+            "Expenses Tracker": [project_1_page, expenses_view], 
             "Chatbot": [project_2_page],
 
     }
