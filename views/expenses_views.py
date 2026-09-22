@@ -8,7 +8,7 @@ from streamlit_gsheets import GSheetsConnection
 
 WORKSHEET = "Expense Register"
 conn = st.connection("gsheets", type=GSheetsConnection)
-#data = conn.read(worksheet=WORKSHEET)
+data = conn.read(worksheet=WORKSHEET)
 
 
 def options_for(column: str, fallback: list[str]) -> list[str]:
