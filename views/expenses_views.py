@@ -1,8 +1,12 @@
 import re
+import io
 from datetime import date, datetime
 
 import pandas as pd
 import streamlit as st
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
 from streamlit_gsheets import GSheetsConnection
 
 
@@ -122,6 +126,55 @@ def prepare_value(column: str, value: object) -> object:
     if isinstance(value, bool):
         return "Yes" if value else "No"
     return value
+
+
+@st.cache_resource
+def drive_service():
+    gsheets_secrets = dict(st.secrets["connections"]["gsheets"])
+    credentials = service_account.Credentials.from_service_account_info(
+        gsheets_secrets,
+        scopes=["https://www.googleapis.com/auth/drive"],
+    )
+    return build("drive", "v3", credentials=credentials, cache_discovery=False)
+
+
+def upload_receipt(uploaded_file: object) -> str:
+    if uploaded_file is None:
+        return ""
+
+    folder_id = str(
+        st.secrets["connections"]["gsheets"].get("receipt_folder_id", "")
+    ).strip()
+    if not folder_id:
+        raise RuntimeError(
+            "Receipt uploads require connections.gsheets.receipt_folder_id "
+            "in .streamlit/secrets.toml."
+        )
+
+    file_metadata = {
+        "name": uploaded_file.name,
+        "parents": [folder_id],
+    }
+    media = MediaIoBaseUpload(
+        io.BytesIO(uploaded_file.getvalue()),
+        mimetype=uploaded_file.type or "application/octet-stream",
+        resumable=False,
+    )
+    service = drive_service()
+    uploaded = (
+        service.files()
+        .create(body=file_metadata, media_body=media, fields="id,webViewLink")
+        .execute()
+    )
+    service.permissions().create(
+        fileId=uploaded["id"],
+        body={"type": "anyone", "role": "reader"},
+        fields="id",
+    ).execute()
+    return uploaded.get(
+        "webViewLink",
+        f"https://drive.google.com/file/d/{uploaded['id']}/view",
+    )
 
 
 st.title("Add new expense", text_alignment="center")
@@ -279,6 +332,16 @@ elif submitted:
             st.error(error)
     else:
         row = {column: prepare_value(column, values.get(column, "")) for column in COLUMNS}
+        receipt_column = next(
+            (column for column in COLUMNS if is_column(column, "Receipt")),
+            None,
+        )
+        if receipt_column and values.get(receipt_column):
+            try:
+                row[receipt_column] = upload_receipt(values[receipt_column])
+            except Exception as error:
+                st.error(f"Receipt upload failed: {error}")
+                st.stop()
         id_column = next(
             (column for column in COLUMNS if is_column(column, "Expense ID", "ID")),
             None,
