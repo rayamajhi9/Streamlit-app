@@ -99,12 +99,11 @@ def render_field(column: str, position: int) -> object:
     if is_column(column, "Priority"):
         return st.selectbox(column, ["High", "Med", "Low"], key=key)
     if is_column(column, "Receipt"):
-        receipt = st.file_uploader(
+        return st.file_uploader(
             "Upload receipt",
             type=["pdf", "png", "jpg", "jpeg"],
             key=key,
         )
-        return receipt.name if receipt else ""
     if is_column(column, "Tax") or name in {"qty", "quantity", "unit cost"}:
         return st.number_input(column, min_value=0.0, step=0.01, format="%.2f", key=key)
 
