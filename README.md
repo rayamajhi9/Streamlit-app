@@ -4,9 +4,9 @@ This application records expenses in Google Sheets and stores optional receipt f
 
 ## Receipt uploads
 
-1. Create an `Expense Receipts` folder in the Google Drive account used for this app.
-2. Share the folder with the service-account email from the `client_email` secret as an Editor.
-3. Copy the folder ID from the Drive URL.
+1. Create a **Shared Drive** and an `Expense Receipts` folder inside it. A normal folder in personal My Drive will fail because service accounts do not have personal Drive storage quota.
+2. Add the service-account email from the `client_email` secret as a Contributor or Content manager on the Shared Drive.
+3. Copy the receipt folder ID from the Drive URL.
 4. Add the folder ID to `.streamlit/secrets.toml`:
 
 ```toml
@@ -14,4 +14,4 @@ This application records expenses in Google Sheets and stores optional receipt f
 receipt_folder_id = "your-google-drive-folder-id"
 ```
 
-The Google Drive API must be enabled for the same Google Cloud project as the service account. The app saves the uploaded file's shareable Drive URL in the worksheet's `Receipt` column.
+The Google Drive API must be enabled for the same Google Cloud project as the service account. The app saves the uploaded file's shareable Drive URL in the worksheet's `Receipt` column. Shared Drive administrators may need to allow link sharing for the app's permission step to succeed.

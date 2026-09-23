@@ -146,8 +146,9 @@ def upload_receipt(uploaded_file: object) -> str:
     ).strip()
     if not folder_id:
         raise RuntimeError(
-            "Receipt uploads require connections.gsheets.receipt_folder_id "
-            "in .streamlit/secrets.toml."
+            "Receipt uploads require a Shared Drive folder. Set "
+            "connections.gsheets.receipt_folder_id to a folder inside a Shared "
+            "Drive and share that Shared Drive with the service account."
         )
 
     file_metadata = {
@@ -162,13 +163,19 @@ def upload_receipt(uploaded_file: object) -> str:
     service = drive_service()
     uploaded = (
         service.files()
-        .create(body=file_metadata, media_body=media, fields="id,webViewLink")
+        .create(
+            body=file_metadata,
+            media_body=media,
+            fields="id,webViewLink",
+            supportsAllDrives=True,
+        )
         .execute()
     )
     service.permissions().create(
         fileId=uploaded["id"],
         body={"type": "anyone", "role": "reader"},
         fields="id",
+        supportsAllDrives=True,
     ).execute()
     return uploaded.get(
         "webViewLink",
