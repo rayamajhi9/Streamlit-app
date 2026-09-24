@@ -3,6 +3,7 @@ import io
 from datetime import date, datetime
 
 import pandas as pd
+import gspread
 import streamlit as st
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -14,6 +15,18 @@ WORKSHEET = "Expense Register"
 conn = st.connection("gsheets", type=GSheetsConnection)
 data = conn.read(worksheet=WORKSHEET)
 COLUMNS = list(data.columns)
+SERVICE_ACCOUNT_FIELDS = {
+    "type",
+    "project_id",
+    "private_key_id",
+    "private_key",
+    "client_email",
+    "client_id",
+    "auth_uri",
+    "token_uri",
+    "auth_provider_x509_cert_url",
+    "client_x509_cert_url",
+}
 
 
 def normalized(column: str) -> str:
@@ -127,14 +140,37 @@ def prepare_value(column: str, value: object) -> object:
     return value
 
 
+def service_account_credentials():
+    secrets = dict(st.secrets["connections"]["gsheets"])
+    return service_account.Credentials.from_service_account_info(
+        {key: secrets[key] for key in SERVICE_ACCOUNT_FIELDS if key in secrets},
+        scopes=[
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/spreadsheets",
+        ],
+    )
+
+
 @st.cache_resource
 def drive_service():
-    gsheets_secrets = dict(st.secrets["connections"]["gsheets"])
-    credentials = service_account.Credentials.from_service_account_info(
-        gsheets_secrets,
-        scopes=["https://www.googleapis.com/auth/drive"],
-    )
+    credentials = service_account_credentials()
     return build("drive", "v3", credentials=credentials, cache_discovery=False)
+
+
+@st.cache_resource
+def sheets_client():
+    return gspread.authorize(service_account_credentials())
+
+
+def append_expense_row(row: dict[str, object]) -> None:
+    secrets = st.secrets["connections"]["gsheets"]
+    spreadsheet_url = str(secrets["spreadsheet"])
+    worksheet = sheets_client().open_by_url(spreadsheet_url).worksheet(WORKSHEET)
+    worksheet.append_row(
+        [row.get(column, "") for column in COLUMNS],
+        value_input_option="USER_ENTERED",
+        insert_data_option="INSERT_ROWS",
+    )
 
 
 def upload_receipt(uploaded_file: object) -> str:
@@ -360,10 +396,7 @@ elif submitted:
         )
         if total_column and quantity_column and unit_cost_column:
             row[total_column] = float(values[quantity_column]) * float(values[unit_cost_column])
-        conn.update(
-            worksheet=WORKSHEET,
-            data=pd.concat([data, pd.DataFrame([row], columns=COLUMNS)], ignore_index=True),
-        )
+        append_expense_row(row)
         label = values.get(description_column, "expense") if description_column else "expense"
         st.success(f"Added {str(label).strip() or 'expense'} to the expense register.")
         st.rerun()
